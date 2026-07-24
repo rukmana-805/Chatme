@@ -67,7 +67,7 @@ const MessageInput = ({ onSendMessage, onTyping, onStopTyping }) => {
         alert('Failed to upload image. Please try again.');
         setUploadingImage(false);
         return;
-      } flex-1;
+      }
     }
 
     onSendMessage({ text: text.trim(), imageUrl: uploadedUrl });
