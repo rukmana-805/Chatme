@@ -79,19 +79,14 @@ exports.clearPrivateChat = async (req, res) => {
     const currentUserId = req.user._id;
     const { targetUserId } = req.params;
 
-    await Message.updateMany(
-      {
-        $or: [
-          { sender: currentUserId, receiver: targetUserId },
-          { sender: targetUserId, receiver: currentUserId },
-        ],
-      },
-      {
-        $addToSet: { clearedFor: currentUserId },
-      }
-    );
+    await Message.deleteMany({
+      $or: [
+        { sender: currentUserId, receiver: targetUserId },
+        { sender: targetUserId, receiver: currentUserId },
+      ],
+    });
 
-    res.json({ message: 'Chat history cleared for you.' });
+    res.json({ message: 'Chat history cleared from database.' });
   } catch (error) {
     console.error('Clear chat error:', error);
     res.status(500).json({ message: 'Error clearing chat' });
@@ -100,15 +95,11 @@ exports.clearPrivateChat = async (req, res) => {
 
 exports.clearRoomChat = async (req, res) => {
   try {
-    const currentUserId = req.user._id;
     const { roomId } = req.params;
 
-    await Message.updateMany(
-      { room: roomId },
-      { $addToSet: { clearedFor: currentUserId } }
-    );
+    await Message.deleteMany({ room: roomId });
 
-    res.json({ message: 'Room chat cleared for you.' });
+    res.json({ message: 'Room chat cleared from database.' });
   } catch (error) {
     console.error('Clear room chat error:', error);
     res.status(500).json({ message: 'Error clearing room chat' });
