@@ -1,0 +1,146 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+:root {
+  --bg-dark: #0b141a;
+  --bg-secondary: #111b21;
+  --bg-card: #1f2c34;
+  --bg-card-hover: #222e35;
+  --accent-emerald: #00a884;
+  --accent-emerald-hover: #06cf9c;
+  --accent-teal: #008069;
+  --accent-cyan: #00bcd4;
+  --text-primary: #e9edef;
+  --text-secondary: #8696a0;
+  --text-muted: #667781;
+  --border-color: rgba(134, 150, 160, 0.15);
+  --bubble-incoming: #202c33;
+  --bubble-outgoing: #005c4b;
+  --danger: #f15c6d;
+  --danger-hover: #ff3b50;
+  --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.6);
+  --font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: var(--font-family);
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(134, 150, 160, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 168, 132, 0.5);
+}
+
+/* Buttons & Inputs reset */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+input, textarea {
+  font-family: inherit;
+  outline: none;
+  border: none;
+}
+
+/* Luxury Glassmorphism Utilities */
+.glass-panel {
+  background: rgba(17, 27, 33, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-modal {
+  background: rgba(31, 44, 52, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 168, 132, 0.15);
+}
+
+.glow-box {
+  box-shadow: 0 0 25px rgba(0, 168, 132, 0.25);
+}
+
+.glow-text {
+  text-shadow: 0 0 12px rgba(0, 168, 132, 0.5);
+}
+
+/* Subtle Chat Wallpaper Mesh Background */
+.chat-bg-pattern {
+  background-color: #0b141a;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(0, 168, 132, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(0, 128, 105, 0.06) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(0, 188, 212, 0.03) 0px, transparent 50%);
+}
+
+.auth-bg-mesh {
+  background: radial-gradient(circle at 15% 15%, rgba(0, 168, 132, 0.15) 0%, transparent 45%),
+              radial-gradient(circle at 85% 85%, rgba(0, 128, 105, 0.12) 0%, transparent 45%),
+              radial-gradient(circle at 50% 50%, rgba(17, 27, 33, 0.95) 0%, #0b141a 100%);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pop-in {
+  animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Badges */
+.online-badge {
+  width: 11px;
+  height: 11px;
+  background-color: var(--accent-emerald);
+  border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
+  box-shadow: 0 0 8px var(--accent-emerald);
+}
+
+.offline-badge {
+  width: 11px;
+  height: 11px;
+  background-color: var(--text-muted);
+  border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
+}
