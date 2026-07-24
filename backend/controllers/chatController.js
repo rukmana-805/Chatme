@@ -74,10 +74,50 @@ exports.uploadImage = async (req, res) => {
   }
 };
 
+// Helper to cleanup images from Cloudinary & local storage
+const deleteMessageImages = async (messages) => {
+  for (const msg of messages) {
+    if (!msg.imageUrl) continue;
+
+    try {
+      if (isCloudinaryConfigured() && msg.imageUrl.includes('res.cloudinary.com')) {
+        // Extract public_id (e.g. "chatme_uploads/filename")
+        const urlParts = msg.imageUrl.split('/');
+        const fileNameWithExt = urlParts.pop();
+        const folderName = urlParts.pop();
+        const publicId = `${folderName}/${fileNameWithExt.split('.')[0]}`;
+
+        await cloudinary.uploader.destroy(publicId);
+        console.log(`[Cloudinary Cleanup] Destroyed image: ${publicId}`);
+      } else if (msg.imageUrl.includes('/uploads/')) {
+        // Local file storage cleanup
+        const filename = path.basename(msg.imageUrl);
+        const localPath = path.join(__dirname, '../uploads', filename);
+        if (fs.existsSync(localPath)) {
+          fs.unlinkSync(localPath);
+          console.log(`[Local File Cleanup] Deleted file: ${filename}`);
+        }
+      }
+    } catch (err) {
+      console.error(`[Image Cleanup Error] Failed for ${msg.imageUrl}:`, err.message);
+    }
+  }
+};
+
 exports.clearPrivateChat = async (req, res) => {
   try {
     const currentUserId = req.user._id;
     const { targetUserId } = req.params;
+
+    const messagesToDelete = await Message.find({
+      $or: [
+        { sender: currentUserId, receiver: targetUserId },
+        { sender: targetUserId, receiver: currentUserId },
+      ],
+      imageUrl: { $ne: '' },
+    });
+
+    await deleteMessageImages(messagesToDelete);
 
     await Message.deleteMany({
       $or: [
@@ -86,7 +126,7 @@ exports.clearPrivateChat = async (req, res) => {
       ],
     });
 
-    res.json({ message: 'Chat history cleared from database.' });
+    res.json({ message: 'Chat history & images cleared permanently.' });
   } catch (error) {
     console.error('Clear chat error:', error);
     res.status(500).json({ message: 'Error clearing chat' });
@@ -97,9 +137,16 @@ exports.clearRoomChat = async (req, res) => {
   try {
     const { roomId } = req.params;
 
+    const messagesToDelete = await Message.find({
+      room: roomId,
+      imageUrl: { $ne: '' },
+    });
+
+    await deleteMessageImages(messagesToDelete);
+
     await Message.deleteMany({ room: roomId });
 
-    res.json({ message: 'Room chat cleared from database.' });
+    res.json({ message: 'Room chat & images cleared permanently.' });
   } catch (error) {
     console.error('Clear room chat error:', error);
     res.status(500).json({ message: 'Error clearing room chat' });
