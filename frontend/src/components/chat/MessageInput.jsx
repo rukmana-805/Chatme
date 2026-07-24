@@ -12,9 +12,14 @@ const MessageInput = ({ onSendMessage, onTyping, onStopTyping }) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [quickEmojis, setQuickEmojis] = useState([]);
   const fileInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
     setQuickEmojis(getMostUsedEmojis(6));
+
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
   }, []);
 
   const handleImageChange = (e) => {
@@ -50,6 +55,10 @@ const MessageInput = ({ onSendMessage, onTyping, onStopTyping }) => {
     e.preventDefault();
     if (!text.trim() && !imageFile) return;
 
+    // Immediately stop typing indicator when submitting message/image
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (onStopTyping) onStopTyping();
+
     let uploadedUrl = '';
 
     if (imageFile) {
@@ -83,6 +92,12 @@ const MessageInput = ({ onSendMessage, onTyping, onStopTyping }) => {
   const handleTextChange = (e) => {
     setText(e.target.value);
     if (onTyping) onTyping();
+
+    // Auto stop typing indicator after 2.5s of inactivity
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      if (onStopTyping) onStopTyping();
+    }, 2500);
   };
 
   return (

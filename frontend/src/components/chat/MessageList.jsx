@@ -37,14 +37,14 @@ const MessageList = ({ messages, onOpenImage }) => {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 7) {
-      return date.toLocaleDateString([], { weekday: 'long' }); // e.g. Monday, Tuesday
+      return date.toLocaleDateString([], { weekday: 'long' });
     }
 
     return date.toLocaleDateString([], {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
-    }); // e.g. 24 Jul 2026
+    });
   };
 
   const handleDownloadImage = async (e, imageUrl) => {
@@ -122,18 +122,28 @@ const MessageList = ({ messages, onOpenImage }) => {
                     </div>
                   )}
 
-                  {/* Attached Image with Download & View Overlay */}
+                  {/* Attached Image with Download & View Controls for Both Sender & Receiver */}
                   {msg.imageUrl && (
-                    <div className="mb-2 overflow-hidden rounded-xl border border-white/10 group relative cursor-pointer">
+                    <div className="mb-2 overflow-hidden rounded-xl border border-white/10 group relative cursor-pointer bg-black/20">
                       <img
                         src={msg.imageUrl}
                         alt="Attachment"
                         onClick={() => onOpenImage(msg.imageUrl)}
                         className="max-h-64 sm:max-h-72 w-full object-cover group-hover:scale-[1.02] transition duration-300"
                       />
+
+                      {/* Permanent Direct Download Icon (Always visible on mobile & PC for both sender & receiver) */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDownloadImage(e, msg.imageUrl)}
+                        className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-[#00a884] text-white hover:text-[#0b141a] rounded-xl backdrop-blur-md border border-white/20 shadow-md transition z-10"
+                        title="Download Image to Device"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
                       
-                      {/* Hover Actions: View & Download */}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 p-2">
+                      {/* Hover Actions Overlay: View & Download */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 p-2 pointer-events-none group-hover:pointer-events-auto">
                         <button
                           type="button"
                           onClick={() => onOpenImage(msg.imageUrl)}
