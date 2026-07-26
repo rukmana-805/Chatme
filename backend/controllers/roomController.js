@@ -73,11 +73,45 @@ exports.joinRoomByCode = async (req, res) => {
 
 exports.getUserRooms = async (req, res) => {
   try {
-    const rooms = await Room.find({ members: req.user._id })
+    const currentUserId = req.user._id;
+    const rooms = await Room.find({ members: currentUserId })
       .populate('admin', 'username email avatar')
       .populate('members', 'username email avatar isOnline');
-    res.json(rooms);
+
+    const roomsWithLastMessage = await Promise.all(
+      rooms.map(async (room) => {
+        const lastMsg = await Message.findOne({
+          room: room._id,
+          clearedFor: { $ne: currentUserId },
+        })
+          .sort({ createdAt: -1 })
+          .populate('sender', 'username')
+          .select('text imageUrl createdAt sender');
+
+        return {
+          ...room.toObject(),
+          lastMessage: lastMsg
+            ? {
+                text: lastMsg.text,
+                imageUrl: lastMsg.imageUrl,
+                createdAt: lastMsg.createdAt,
+                sender: lastMsg.sender,
+              }
+            : null,
+        };
+      })
+    );
+
+    // Sort rooms by latest message first
+    roomsWithLastMessage.sort((a, b) => {
+      const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+      const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    res.json(roomsWithLastMessage);
   } catch (error) {
+    console.error('Fetch user rooms error:', error);
     res.status(500).json({ message: 'Error fetching user rooms' });
   }
 };

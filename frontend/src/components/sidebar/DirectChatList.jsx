@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../utils/api';
 import Avatar from '../ui/Avatar';
+import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
-import { MessageSquare, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const DirectChatList = ({ activeChat, unreadCounts = {}, onSelectChat }) => {
+  const { user } = useAuth();
+  const { socket, onlineUserIds } = useSocket();
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { onlineUserIds } = useSocket();
 
   const fetchFriends = async () => {
     try {
@@ -23,6 +25,76 @@ const DirectChatList = ({ activeChat, unreadCounts = {}, onSelectChat }) => {
   useEffect(() => {
     fetchFriends();
   }, []);
+
+  // Listen for socket private messages to update lastMessage and re-sort list in real-time
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    const handlePrivateMsg = (newMsg) => {
+      const senderId = (typeof newMsg.sender === 'object' ? newMsg.sender?._id : newMsg.sender)?.toString();
+      const receiverId = (typeof newMsg.receiver === 'object' ? newMsg.receiver?._id : newMsg.receiver)?.toString();
+      const currentUserId = user._id?.toString();
+
+      const partnerId = senderId === currentUserId ? receiverId : senderId;
+      if (!partnerId) return;
+
+      setFriends((prevFriends) => {
+        const friendIndex = prevFriends.findIndex((f) => f._id.toString() === partnerId);
+        if (friendIndex === -1) return prevFriends;
+
+        const targetFriend = {
+          ...prevFriends[friendIndex],
+          lastMessage: {
+            text: newMsg.text,
+            imageUrl: newMsg.imageUrl,
+            createdAt: newMsg.createdAt || new Date().toISOString(),
+            sender: newMsg.sender,
+          },
+        };
+
+        const otherFriends = prevFriends.filter((f) => f._id.toString() !== partnerId);
+        return [targetFriend, ...otherFriends];
+      });
+    };
+
+    socket.on('receive_private_message', handlePrivateMsg);
+    return () => {
+      socket.off('receive_private_message', handlePrivateMsg);
+    };
+  }, [socket, user]);
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const renderPreview = (friend) => {
+    if (!friend.lastMessage) {
+      return friend.bio && friend.bio.trim() ? friend.bio : 'Hey there! I am using ChatMe.';
+    }
+
+    const senderId = (typeof friend.lastMessage.sender === 'object' ? friend.lastMessage.sender?._id : friend.lastMessage.sender)?.toString();
+    const isMe = senderId === user?._id?.toString();
+
+    let content = '';
+    if (friend.lastMessage.text) {
+      content = friend.lastMessage.text;
+    } else if (friend.lastMessage.imageUrl) {
+      content = '📷 Photo';
+    }
+
+    return (
+      <span className="truncate block">
+        {isMe && <span className="text-[#00a884] font-medium">You: </span>}
+        <span>{content}</span>
+      </span>
+    );
+  };
 
   if (loading) {
     return (
@@ -70,18 +142,21 @@ const DirectChatList = ({ activeChat, unreadCounts = {}, onSelectChat }) => {
                   <h4 className="text-sm font-bold text-white truncate font-display">
                     {friend.username}
                   </h4>
-                  {unreadCount > 0 && !isSelected && (
-                    <span className="flex items-center justify-center px-2 py-0.5 text-[10px] font-black bg-[#00a884] text-[#0b141a] rounded-full shadow-lg shadow-[#00a884]/30 animate-bounce">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {friend.lastMessage?.createdAt && (
+                      <span className="text-[10px] text-[#8696a0] font-medium">
+                        {formatTime(friend.lastMessage.createdAt)}
+                      </span>
+                    )}
+                    {unreadCount > 0 && !isSelected && (
+                      <span className="flex items-center justify-center px-2 py-0.5 text-[10px] font-black bg-[#00a884] text-[#0b141a] rounded-full shadow-lg shadow-[#00a884]/30 animate-bounce">
+                        {unreadCount > 4 ? '4+' : unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-[#8696a0] truncate mt-0.5">
-                  {isOnline ? (
-                    <span className="text-[#00a884] font-semibold">Online</span>
-                  ) : (
-                    friend.bio || 'Connected Friend'
-                  )}
+                  {renderPreview(friend)}
                 </p>
               </div>
             </div>

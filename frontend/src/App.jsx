@@ -35,6 +35,20 @@ function App() {
     setToast({ message, type });
   };
 
+  // Fetch initial unread counts on user login
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnreadCounts = async () => {
+      try {
+        const res = await api.get('/chat/unread-counts');
+        setUnreadCounts(res.data || {});
+      } catch (err) {
+        console.error('Fetch unread counts error:', err);
+      }
+    };
+    fetchUnreadCounts();
+  }, [user]);
+
   // Clear unread count & emit mark_read when activeChat opens
   useEffect(() => {
     if (activeChat) {

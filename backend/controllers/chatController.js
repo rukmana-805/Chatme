@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Room = require('../models/Room');
 const { cloudinary, isCloudinaryConfigured } = require('../config/cloudinary');
 const path = require('path');
 const fs = require('fs');
@@ -150,5 +151,62 @@ exports.clearRoomChat = async (req, res) => {
   } catch (error) {
     console.error('Clear room chat error:', error);
     res.status(500).json({ message: 'Error clearing room chat' });
+  }
+};
+
+exports.getUnreadCounts = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+
+    // Unread direct messages
+    const unreadDirect = await Message.aggregate([
+      {
+        $match: {
+          receiver: currentUserId,
+          isRead: false,
+          clearedFor: { $ne: currentUserId },
+        },
+      },
+      {
+        $group: {
+          _id: '$sender',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Unread room messages
+    const userRooms = await Room.find({ members: currentUserId }).select('_id');
+    const userRoomIds = userRooms.map((r) => r._id);
+
+    const unreadRooms = await Message.aggregate([
+      {
+        $match: {
+          room: { $in: userRoomIds },
+          sender: { $ne: currentUserId },
+          clearedFor: { $ne: currentUserId },
+        },
+      },
+      {
+        $group: {
+          _id: '$room',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const counts = {};
+    unreadDirect.forEach((item) => {
+      counts[`direct_${item._id}`] = item.count;
+    });
+
+    unreadRooms.forEach((item) => {
+      counts[`room_${item._id}`] = item.count;
+    });
+
+    res.json(counts);
+  } catch (error) {
+    console.error('Get unread counts error:', error);
+    res.status(500).json({ message: 'Error fetching unread counts' });
   }
 };

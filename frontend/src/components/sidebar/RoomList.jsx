@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../utils/api';
 import Avatar from '../ui/Avatar';
+import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 import { Plus, LogIn, Users, Loader2 } from 'lucide-react';
 
 const RoomList = ({
@@ -10,6 +12,8 @@ const RoomList = ({
   onCreateRoomClick,
   onJoinRoomClick,
 }) => {
+  const { user } = useAuth();
+  const { socket } = useSocket();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,6 +31,80 @@ const RoomList = ({
   useEffect(() => {
     fetchRooms();
   }, []);
+
+  // Socket listener for room messages to move room to TOP and update last message live
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRoomMsg = (newMsg) => {
+      const roomId = (typeof newMsg.room === 'object' ? newMsg.room?._id : newMsg.room)?.toString();
+      if (!roomId) return;
+
+      setRooms((prevRooms) => {
+        const roomIndex = prevRooms.findIndex((r) => r._id.toString() === roomId);
+        if (roomIndex === -1) return prevRooms;
+
+        const targetRoom = {
+          ...prevRooms[roomIndex],
+          lastMessage: {
+            text: newMsg.text,
+            imageUrl: newMsg.imageUrl,
+            createdAt: newMsg.createdAt || new Date().toISOString(),
+            sender: newMsg.sender,
+          },
+        };
+
+        const otherRooms = prevRooms.filter((r) => r._id.toString() !== roomId);
+        return [targetRoom, ...otherRooms];
+      });
+    };
+
+    socket.on('receive_room_message', handleRoomMsg);
+    return () => {
+      socket.off('receive_room_message', handleRoomMsg);
+    };
+  }, [socket]);
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const renderRoomPreview = (room) => {
+    if (!room.lastMessage) {
+      return (
+        <span className="flex items-center gap-1">
+          <Users className="w-3 h-3 text-[#667781]" /> {room.members?.length || 0} Members
+        </span>
+      );
+    }
+
+    const senderName =
+      typeof room.lastMessage.sender === 'object'
+        ? room.lastMessage.sender?.username
+        : 'Member';
+
+    const isMe = (typeof room.lastMessage.sender === 'object' ? room.lastMessage.sender?._id : room.lastMessage.sender)?.toString() === user?._id?.toString();
+
+    let content = '';
+    if (room.lastMessage.text) {
+      content = room.lastMessage.text;
+    } else if (room.lastMessage.imageUrl) {
+      content = '📷 Photo';
+    }
+
+    return (
+      <span className="truncate block">
+        <span className="text-[#00a884] font-medium">{isMe ? 'You' : senderName}: </span>
+        <span>{content}</span>
+      </span>
+    );
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#111b21] no-scrollbar">
@@ -82,18 +160,25 @@ const RoomList = ({
                     <h4 className="text-sm font-bold text-white truncate font-display">
                       {room.name}
                     </h4>
-                    {unreadCount > 0 && !isSelected ? (
-                      <span className="flex items-center justify-center px-2 py-0.5 text-[10px] font-black bg-[#00a884] text-[#0b141a] rounded-full shadow-lg shadow-[#00a884]/30 animate-bounce">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-mono bg-[#00a884]/10 text-[#00a884] px-1.5 py-0.5 rounded font-bold">
-                        {room.code}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {room.lastMessage?.createdAt && (
+                        <span className="text-[10px] text-[#8696a0] font-medium">
+                          {formatTime(room.lastMessage.createdAt)}
+                        </span>
+                      )}
+                      {unreadCount > 0 && !isSelected ? (
+                        <span className="flex items-center justify-center px-2 py-0.5 text-[10px] font-black bg-[#00a884] text-[#0b141a] rounded-full shadow-lg shadow-[#00a884]/30 animate-bounce">
+                          {unreadCount > 4 ? '4+' : unreadCount}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono bg-[#00a884]/10 text-[#00a884] px-1.5 py-0.5 rounded font-bold">
+                          {room.code}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-[#8696a0] truncate mt-0.5 flex items-center gap-1">
-                    <Users className="w-3 h-3 text-[#667781]" /> {room.members?.length || 0} Members
+                  <p className="text-xs text-[#8696a0] truncate mt-0.5">
+                    {renderRoomPreview(room)}
                   </p>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const FollowRequest = require('../models/FollowRequest');
+const Message = require('../models/Message');
 const mongoose = require('mongoose');
 
 exports.searchUsers = async (req, res) => {
@@ -177,9 +178,55 @@ exports.rejectFollowRequest = async (req, res) => {
 
 exports.getFriends = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).populate('friends', 'username email avatar bio isOnline lastSeen');
-    res.json(user.friends || []);
+    const currentUserId = req.user._id;
+    const user = await User.findById(currentUserId).populate('friends', 'username email avatar bio isOnline lastSeen');
+    
+    if (!user || !user.friends) {
+      return res.json([]);
+    }
+
+    const friendsWithLastMessage = await Promise.all(
+      user.friends.map(async (friend) => {
+        const lastMsg = await Message.findOne({
+          $or: [
+            { sender: currentUserId, receiver: friend._id },
+            { sender: friend._id, receiver: currentUserId },
+          ],
+          clearedFor: { $ne: currentUserId },
+        })
+          .sort({ createdAt: -1 })
+          .select('text imageUrl createdAt sender');
+
+        return {
+          _id: friend._id,
+          username: friend.username,
+          email: friend.email,
+          avatar: friend.avatar,
+          bio: friend.bio,
+          isOnline: friend.isOnline,
+          lastSeen: friend.lastSeen,
+          lastMessage: lastMsg
+            ? {
+                text: lastMsg.text,
+                imageUrl: lastMsg.imageUrl,
+                createdAt: lastMsg.createdAt,
+                sender: lastMsg.sender,
+              }
+            : null,
+        };
+      })
+    );
+
+    // Sort friends: users with latest messages first, then others
+    friendsWithLastMessage.sort((a, b) => {
+      const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+      const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    res.json(friendsWithLastMessage);
   } catch (error) {
+    console.error('Fetch friends error:', error);
     res.status(500).json({ message: 'Error fetching connected friends' });
   }
 };

@@ -5,11 +5,13 @@ const {
   uploadImage,
   clearPrivateChat,
   clearRoomChat,
+  getUnreadCounts,
 } = require('../controllers/chatController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
 router.get('/messages/:targetUserId', protect, getPrivateMessages);
+router.get('/unread-counts', protect, getUnreadCounts);
 router.post('/upload', protect, upload.single('image'), uploadImage);
 router.delete('/clear/private/:targetUserId', protect, clearPrivateChat);
 router.delete('/clear/room/:roomId', protect, clearRoomChat);

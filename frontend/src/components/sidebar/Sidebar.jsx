@@ -20,13 +20,15 @@ const Sidebar = ({
 
   if (!user) return null;
 
+  // Count distinct persons with unread messages
   const directUnreadTotal = Object.keys(unreadCounts)
-    .filter((k) => k.startsWith('direct_'))
-    .reduce((sum, k) => sum + (unreadCounts[k] || 0), 0);
+    .filter((k) => k.startsWith('direct_') && (unreadCounts[k] || 0) > 0)
+    .length;
 
+  // Count distinct rooms with unread messages
   const roomUnreadTotal = Object.keys(unreadCounts)
-    .filter((k) => k.startsWith('room_'))
-    .reduce((sum, k) => sum + (unreadCounts[k] || 0), 0);
+    .filter((k) => k.startsWith('room_') && (unreadCounts[k] || 0) > 0)
+    .length;
 
   return (
     <div className={`w-full md:w-80 lg:w-96 flex flex-col h-full bg-[#111b21] border-r border-white/5 select-none flex-shrink-0 relative z-10 ${className}`}>
@@ -67,7 +69,7 @@ const Sidebar = ({
           <span className="truncate">Chats</span>
           {directUnreadTotal > 0 && (
             <span className="px-1.5 py-0.2 text-[10px] font-black bg-[#00a884] text-[#0b141a] rounded-full animate-pulse shadow-sm">
-              {directUnreadTotal}
+              {directUnreadTotal > 4 ? '4+' : directUnreadTotal}
             </span>
           )}
         </button>
@@ -84,7 +86,7 @@ const Sidebar = ({
           <span className="truncate">Rooms</span>
           {roomUnreadTotal > 0 && (
             <span className="px-1.5 py-0.2 text-[10px] font-black bg-[#00a884] text-[#0b141a] rounded-full animate-pulse shadow-sm">
-              {roomUnreadTotal}
+              {roomUnreadTotal > 4 ? '4+' : roomUnreadTotal}
             </span>
           )}
         </button>
