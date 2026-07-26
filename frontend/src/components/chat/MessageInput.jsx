@@ -101,7 +101,7 @@ const MessageInput = ({ onSendMessage, onTyping, onStopTyping }) => {
   };
 
   return (
-    <div className="relative p-2.5 sm:p-3 bg-[#111b21]/90 backdrop-blur-md border-t border-white/5 select-none z-20">
+    <div className="shrink-0 relative p-2.5 sm:p-3 bg-[#111b21]/90 backdrop-blur-md border-t border-white/5 select-none z-20">
       {/* Quick Emojis Bar */}
       <div className="flex items-center gap-1.5 px-3 py-1 mb-2 bg-[#1f2c34]/60 rounded-xl overflow-x-auto border border-white/5 no-scrollbar">
         <span className="text-[10px] font-bold text-[#8696a0] uppercase flex-shrink-0 mr-1">

@@ -48,6 +48,34 @@ function App() {
     }
   }, [activeChat, socket]);
 
+  // Handle mobile browser back button integration (popstate)
+  useEffect(() => {
+    if (activeChat) {
+      if (!window.history.state?.chatActive) {
+        window.history.pushState({ chatActive: true }, '');
+      }
+    }
+
+    const handlePopState = () => {
+      if (activeChat) {
+        setActiveChat(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [activeChat]);
+
+  const handleBackChat = () => {
+    if (window.history.state?.chatActive) {
+      window.history.back();
+    } else {
+      setActiveChat(null);
+    }
+  };
+
   // Fetch messages on activeChat change
   useEffect(() => {
     if (!activeChat || !user) return;
@@ -280,7 +308,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0b141a] text-white select-none relative">
+    <div className="flex h-screen h-[100dvh] w-screen overflow-hidden bg-[#0b141a] text-white select-none relative pt-[env(safe-area-inset-top,0px)]">
       {/* Responsive Sidebar Navigation */}
       <Sidebar
         activeChat={activeChat}
@@ -292,22 +320,24 @@ function App() {
       />
 
       {/* Main Active Chat View */}
-      <div className={`flex-1 flex-col h-full bg-[#0b141a] relative chat-bg-pattern ${activeChat ? 'flex' : 'hidden md:flex'}`}>
+      <div className={`flex-1 flex-col h-full min-h-0 bg-[#0b141a] relative chat-bg-pattern ${activeChat ? 'flex' : 'hidden md:flex'}`}>
         {activeChat ? (
           <>
-            <ChatHeader
-              activeChat={activeChat}
-              onClearChat={handleClearChat}
-              onOpenRoomMembers={() => setShowRoomMembers(true)}
-              onBack={() => setActiveChat(null)}
-            />
+            <div className="shrink-0 sticky top-0 z-30 w-full">
+              <ChatHeader
+                activeChat={activeChat}
+                onClearChat={handleClearChat}
+                onOpenRoomMembers={() => setShowRoomMembers(true)}
+                onBack={handleBackChat}
+              />
 
-            {typingStatus && (
-              <div className="bg-[#1f2c34]/90 backdrop-blur-md text-[#00a884] text-xs px-4 py-1.5 italic animate-fade-in font-semibold flex items-center gap-2 border-b border-white/5">
-                <span className="w-2 h-2 rounded-full bg-[#00a884] animate-ping" />
-                {typingStatus}
-              </div>
-            )}
+              {typingStatus && (
+                <div className="bg-[#1f2c34]/90 backdrop-blur-md text-[#00a884] text-xs px-4 py-1.5 italic animate-fade-in font-semibold flex items-center gap-2 border-b border-white/5">
+                  <span className="w-2 h-2 rounded-full bg-[#00a884] animate-ping" />
+                  {typingStatus}
+                </div>
+              )}
+            </div>
 
             {loadingMessages ? (
               <div className="flex-1 flex items-center justify-center text-[#8696a0]">

@@ -22,7 +22,7 @@ const ChatHeader = ({ activeChat, onClearChat, onOpenRoomMembers, onBack }) => {
   };
 
   return (
-    <div className="p-3.5 sm:p-4 bg-[#111b21]/90 backdrop-blur-md border-b border-white/5 flex items-center justify-between shadow-md select-none relative z-20">
+    <div className="shrink-0 w-full sticky top-0 z-30 p-3.5 sm:p-4 bg-[#111b21]/90 backdrop-blur-md border-b border-white/5 flex items-center justify-between shadow-md select-none">
       <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
         {/* Mobile Back Button */}
         {onBack && (
