@@ -1,11 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import Avatar from '../ui/Avatar';
-import { Image as ImageIcon, Check, CheckCheck, Download, Eye } from 'lucide-react';
+import { Image as ImageIcon, Check, CheckCheck, Download, Eye, Copy, X } from 'lucide-react';
 
 const MessageList = ({ messages, onOpenImage }) => {
   const { user } = useAuth();
   const bottomRef = useRef(null);
+  const touchTimerRef = useRef(null);
+
+  const [copiedId, setCopiedId] = useState(null);
+  const [activeMenuId, setActiveMenuId] = useState(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -65,8 +69,34 @@ const MessageList = ({ messages, onOpenImage }) => {
     }
   };
 
+  const handleCopyText = (msgId, text, e) => {
+    if (e) e.stopPropagation();
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedId(msgId);
+    setActiveMenuId(null);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleTouchStart = (msgId, text) => {
+    if (!text) return;
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    touchTimerRef.current = setTimeout(() => {
+      setActiveMenuId(msgId);
+    }, 450);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+    }
+  };
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3.5 bg-opacity-95 scroll-smooth no-scrollbar">
+    <div
+      onClick={() => setActiveMenuId(null)}
+      className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3.5 bg-opacity-95 scroll-smooth no-scrollbar"
+    >
       {messages.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-center text-[#8696a0] animate-fade-in p-6">
           <div className="p-4 rounded-3xl bg-[#1f2c34]/80 border border-white/10 mb-3 shadow-lg">
@@ -80,13 +110,14 @@ const MessageList = ({ messages, onOpenImage }) => {
           const senderId = (typeof msg.sender === 'object' ? msg.sender?._id : msg.sender)?.toString();
           const currentUserId = user?._id?.toString();
           const isMe = senderId && currentUserId && senderId === currentUserId;
+          const msgKey = msg._id || index;
 
           const currentDateLabel = getDateLabel(msg.createdAt);
           const previousDateLabel = index > 0 ? getDateLabel(messages[index - 1].createdAt) : null;
           const showDateDivider = currentDateLabel !== previousDateLabel;
 
           return (
-            <React.Fragment key={msg._id || index}>
+            <React.Fragment key={msgKey}>
               {/* Centered Date Separator Divider */}
               {showDateDivider && (
                 <div className="flex items-center justify-center my-4 animate-fade-in">
@@ -98,7 +129,7 @@ const MessageList = ({ messages, onOpenImage }) => {
 
               {/* Message Bubble Container */}
               <div
-                className={`flex items-end gap-2 animate-fade-in ${isMe ? 'justify-end' : 'justify-start'}`}
+                className={`flex items-end gap-2 animate-fade-in relative group/item ${isMe ? 'justify-end' : 'justify-start'}`}
               >
                 {!isMe && (
                   <Avatar
@@ -110,21 +141,60 @@ const MessageList = ({ messages, onOpenImage }) => {
                 )}
 
                 <div
-                  className={`max-w-[85%] sm:max-w-[70%] md:max-w-[60%] rounded-2xl p-3 sm:p-3.5 shadow-lg border transition-all ${
+                  onTouchStart={() => handleTouchStart(msgKey, msg.text)}
+                  onTouchEnd={handleTouchEnd}
+                  onMouseDown={() => handleTouchStart(msgKey, msg.text)}
+                  onMouseUp={handleTouchEnd}
+                  onContextMenu={(e) => {
+                    if (msg.text) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setActiveMenuId(msgKey);
+                    }
+                  }}
+                  className={`relative max-w-[85%] sm:max-w-[70%] md:max-w-[60%] rounded-2xl p-3 sm:p-3.5 shadow-lg border transition-all ${
                     isMe
                       ? 'bg-[#005c4b] text-white border-emerald-500/20 rounded-br-none shadow-[#005c4b]/10'
                       : 'bg-[#202c33] text-white border-white/10 rounded-bl-none shadow-black/20'
                   }`}
                 >
+                  {/* Long Press / Context Menu Popup Overlay */}
+                  {activeMenuId === msgKey && msg.text && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute -top-11 ${
+                        isMe ? 'right-0' : 'left-0'
+                      } z-30 flex items-center gap-1.5 bg-[#111b21] border border-white/20 p-1.5 rounded-2xl shadow-2xl backdrop-blur-xl animate-pop-in`}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyText(msgKey, msg.text, e)}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-[#00a884] hover:bg-[#06cf9c] text-[#0b141a] text-xs font-extrabold rounded-xl transition shadow-md"
+                      >
+                        <Copy className="w-3.5 h-3.5" /> Copy Text
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(null);
+                        }}
+                        className="p-1 text-[#8696a0] hover:text-white rounded-lg hover:bg-white/10 transition"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
                   {!isMe && msg.sender?.username && (
-                    <div className="text-[11px] font-bold text-[#00a884] mb-1 font-display tracking-wide">
+                    <div className="text-[11px] font-bold text-[#00a884] mb-1 font-display tracking-wide select-none">
                       {msg.sender.username}
                     </div>
                   )}
 
                   {/* Attached Image with Download & View Controls for Both Sender & Receiver */}
                   {msg.imageUrl && (
-                    <div className="mb-2 overflow-hidden rounded-xl border border-white/10 group relative cursor-pointer bg-black/20">
+                    <div className="mb-2 overflow-hidden rounded-xl border border-white/10 group relative cursor-pointer bg-black/20 select-none">
                       <img
                         src={msg.imageUrl}
                         alt="Attachment"
@@ -132,7 +202,7 @@ const MessageList = ({ messages, onOpenImage }) => {
                         className="max-h-64 sm:max-h-72 w-full object-cover group-hover:scale-[1.02] transition duration-300"
                       />
 
-                      {/* Permanent Direct Download Icon (Always visible on mobile & PC for both sender & receiver) */}
+                      {/* Permanent Direct Download Icon */}
                       <button
                         type="button"
                         onClick={(e) => handleDownloadImage(e, msg.imageUrl)}
@@ -164,15 +234,36 @@ const MessageList = ({ messages, onOpenImage }) => {
                     </div>
                   )}
 
-                  {/* Message Text */}
+                  {/* Message Text with Quick Hover Copy Button */}
                   {msg.text && (
-                    <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words font-sans">
-                      {msg.text}
-                    </p>
+                    <div className="relative group/text">
+                      <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words font-sans select-text">
+                        {msg.text}
+                      </p>
+
+                      {/* Desktop Hover / Mobile Quick Copy Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyText(msgKey, msg.text, e)}
+                        className="absolute -top-1 -right-1 opacity-0 group-hover/item:opacity-100 p-1 text-[#8696a0] hover:text-white bg-[#111b21]/90 hover:bg-[#1f2c34] rounded-lg border border-white/10 transition shadow-md"
+                        title="Copy message text"
+                      >
+                        {copiedId === msgKey ? (
+                          <Check className="w-3 h-3 text-[#00a884]" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
                   )}
 
                   {/* Footer Timestamp & Status */}
-                  <div className={`text-[10px] flex items-center justify-end gap-1 mt-1 font-medium ${isMe ? 'text-emerald-200/80' : 'text-[#8696a0]'}`}>
+                  <div className={`text-[10px] flex items-center justify-end gap-1 mt-1 font-medium select-none ${isMe ? 'text-emerald-200/80' : 'text-[#8696a0]'}`}>
+                    {copiedId === msgKey && (
+                      <span className="text-[#00a884] font-bold flex items-center gap-0.5 mr-1 animate-pulse">
+                        <Check className="w-3 h-3" /> Copied!
+                      </span>
+                    )}
                     <span>{formatTime(msg.createdAt)}</span>
                     {isMe && (
                       msg.isRead ? (
