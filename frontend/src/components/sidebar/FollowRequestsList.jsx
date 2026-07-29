@@ -4,7 +4,7 @@ import Avatar from '../ui/Avatar';
 import { UserCheck, UserX, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const FollowRequestsList = ({ onRequestAccepted }) => {
+const FollowRequestsList = ({ onRequestAccepted, onRequestProcessed }) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
@@ -13,7 +13,8 @@ const FollowRequestsList = ({ onRequestAccepted }) => {
   const fetchRequests = async () => {
     try {
       const res = await api.get('/users/follow-requests');
-      setRequests(res.data);
+      setRequests(res.data || []);
+      if (onRequestProcessed) onRequestProcessed(res.data?.length || 0);
     } catch (err) {
       console.error('Fetch requests error:', err);
     } finally {
@@ -29,7 +30,11 @@ const FollowRequestsList = ({ onRequestAccepted }) => {
     setProcessingId(requestId);
     try {
       await api.put(`/users/follow-request/${requestId}/accept`);
-      setRequests((prev) => prev.filter((r) => r._id !== requestId));
+      setRequests((prev) => {
+        const next = prev.filter((r) => r._id !== requestId);
+        if (onRequestProcessed) onRequestProcessed(next.length);
+        return next;
+      });
       reloadUser();
       if (onRequestAccepted) onRequestAccepted();
     } catch (err) {
@@ -43,7 +48,11 @@ const FollowRequestsList = ({ onRequestAccepted }) => {
     setProcessingId(requestId);
     try {
       await api.put(`/users/follow-request/${requestId}/reject`);
-      setRequests((prev) => prev.filter((r) => r._id !== requestId));
+      setRequests((prev) => {
+        const next = prev.filter((r) => r._id !== requestId);
+        if (onRequestProcessed) onRequestProcessed(next.length);
+        return next;
+      });
     } catch (err) {
       alert('Failed to reject request');
     } finally {

@@ -23,6 +23,7 @@ function App() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [typingStatus, setTypingStatus] = useState('');
   const [unreadCounts, setUnreadCounts] = useState({}); // { 'direct_id': number, 'room_id': number }
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   // Modals state
   const [showCreateRoom, setShowCreateRoom] = useState(false);
@@ -35,18 +36,22 @@ function App() {
     setToast({ message, type });
   };
 
-  // Fetch initial unread counts on user login
+  // Fetch initial unread counts and follow request count on user login
   useEffect(() => {
     if (!user) return;
-    const fetchUnreadCounts = async () => {
+    const fetchInitialData = async () => {
       try {
-        const res = await api.get('/chat/unread-counts');
-        setUnreadCounts(res.data || {});
+        const [unreadRes, requestsRes] = await Promise.all([
+          api.get('/chat/unread-counts'),
+          api.get('/users/follow-requests'),
+        ]);
+        setUnreadCounts(unreadRes.data || {});
+        setPendingRequestsCount(requestsRes.data?.length || 0);
       } catch (err) {
-        console.error('Fetch unread counts error:', err);
+        console.error('Fetch initial data error:', err);
       }
     };
-    fetchUnreadCounts();
+    fetchInitialData();
   }, [user]);
 
   // Clear unread count & emit mark_read when activeChat opens
@@ -245,6 +250,7 @@ function App() {
     if (notifications.length > 0) {
       const latest = notifications[notifications.length - 1];
       showToast(latest.message, 'success');
+      setPendingRequestsCount((prev) => prev + 1);
       removeNotification(latest.id);
     }
   }, [notifications, removeNotification]);
@@ -327,6 +333,8 @@ function App() {
       <Sidebar
         activeChat={activeChat}
         unreadCounts={unreadCounts}
+        pendingRequestsCount={pendingRequestsCount}
+        onRequestProcessed={(count) => setPendingRequestsCount(count)}
         onSelectChat={(chat) => setActiveChat(chat)}
         onCreateRoomClick={() => setShowCreateRoom(true)}
         onJoinRoomClick={() => setShowJoinRoom(true)}

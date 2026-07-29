@@ -6,13 +6,27 @@ import { Image as ImageIcon, Check, CheckCheck, Download, Eye, Copy, X } from 'l
 const MessageList = ({ messages, onOpenImage }) => {
   const { user } = useAuth();
   const bottomRef = useRef(null);
+  const containerRef = useRef(null);
   const touchTimerRef = useRef(null);
 
   const [copiedId, setCopiedId] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
 
+  const scrollToBottom = (smooth = true) => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+    bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+  };
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom(true);
+    // Double pass for delayed layout recalculations (e.g. mobile keyboard/images)
+    const timer = setTimeout(() => scrollToBottom(true), 150);
+    return () => clearTimeout(timer);
   }, [messages]);
 
   const formatTime = (dateStr) => {
@@ -94,6 +108,7 @@ const MessageList = ({ messages, onOpenImage }) => {
 
   return (
     <div
+      ref={containerRef}
       onClick={() => setActiveMenuId(null)}
       className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3.5 bg-opacity-95 scroll-smooth no-scrollbar"
     >
@@ -198,6 +213,7 @@ const MessageList = ({ messages, onOpenImage }) => {
                       <img
                         src={msg.imageUrl}
                         alt="Attachment"
+                        onLoad={() => scrollToBottom(true)}
                         onClick={() => onOpenImage(msg.imageUrl)}
                         className="max-h-64 sm:max-h-72 w-full object-cover group-hover:scale-[1.02] transition duration-300"
                       />

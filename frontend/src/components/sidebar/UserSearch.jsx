@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/api';
 import Avatar from '../ui/Avatar';
-import { Search, UserPlus, Check, Clock, MessageSquare, Loader2 } from 'lucide-react';
+import { Search, UserPlus, Clock, MessageSquare, Loader2, X, Sparkles } from 'lucide-react';
 import { useSocket } from '../../context/SocketContext';
 
 const UserSearch = ({ onSelectFriend }) => {
@@ -10,26 +10,59 @@ const UserSearch = ({ onSelectFriend }) => {
   const [loading, setLoading] = useState(false);
   const [sendingId, setSendingId] = useState(null);
   const { socket } = useSocket();
+  const activeRequestRef = useRef(null);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  // Debounced real-time user search effect
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
-    try {
-      const res = await api.get(`/users/search?query=${encodeURIComponent(query.trim())}`);
-      setResults(res.data);
-    } catch (err) {
-      console.error('Search error:', err);
-    } finally {
-      setLoading(false);
-    }
+
+    const timer = setTimeout(async () => {
+      // Create controller for cancelling previous request
+      if (activeRequestRef.current) {
+        activeRequestRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      activeRequestRef.current = controller;
+
+      try {
+        const res = await api.get(`/users/search?query=${encodeURIComponent(trimmed)}`, {
+          signal: controller.signal,
+        });
+        setResults(res.data);
+      } catch (err) {
+        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
+          console.error('Debounced search error:', err);
+        }
+      } finally {
+        if (activeRequestRef.current === controller) {
+          setLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  const handleClear = () => {
+    setQuery('');
+    setResults([]);
+    setLoading(false);
   };
 
   const sendRequest = async (targetUser) => {
     setSendingId(targetUser._id);
     try {
-      const res = await api.post('/users/follow-request', { recipientId: targetUser._id });
+      await api.post('/users/follow-request', { recipientId: targetUser._id });
       setResults((prev) =>
         prev.map((u) =>
           u._id === targetUser._id ? { ...u, hasSentRequest: true } : u
@@ -50,39 +83,55 @@ const UserSearch = ({ onSelectFriend }) => {
 
   return (
     <div className="flex flex-col h-full bg-[#111b21]">
-      {/* Search Header Form */}
-      <form onSubmit={handleSearch} className="p-4 border-b border-white/5">
+      {/* Search Header Input */}
+      <div className="p-4 border-b border-white/5">
         <div className="relative">
-          <Search className="w-4 h-4 text-[#8696a0] absolute left-3.5 top-3.5" />
+          <Search className="w-4 h-4 text-[#8696a0] absolute left-3.5 top-3.5 pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search Username or User ID..."
-            className="w-full bg-[#1f2c34] text-white text-sm pl-10 pr-10 py-2.5 rounded-xl border border-white/5 focus:border-[#00a884] transition"
+            placeholder="Type username or ID to search..."
+            className="w-full bg-[#1f2c34] text-white text-sm pl-10 pr-10 py-2.5 rounded-xl border border-white/5 focus:border-[#00a884] focus:outline-none transition placeholder-[#667781]"
           />
-          <button
-            type="submit"
-            disabled={loading}
-            className="absolute right-2 top-2 p-1 bg-[#00a884] text-[#0b141a] rounded-lg hover:bg-[#06cf9c] transition"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-          </button>
+          <div className="absolute right-3 top-3 flex items-center gap-1.5">
+            {loading && <Loader2 className="w-4 h-4 text-[#00a884] animate-spin" />}
+            {query && !loading && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-0.5 text-[#8696a0] hover:text-white rounded-md hover:bg-white/10 transition"
+                title="Clear input"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-      </form>
+        <p className="text-[11px] text-[#8696a0] mt-1.5 px-1 flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-[#00a884]" /> Real-time debounced suggestions
+        </p>
+      </div>
 
-      {/* Results List */}
+      {/* Results Suggestions List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {results.length === 0 && !loading && (
-          <div className="text-center text-[#8696a0] text-xs py-8">
-            Type username or ID above to find friends.
+        {!query.trim() && (
+          <div className="text-center text-[#8696a0] text-xs py-10 space-y-2">
+            <Search className="w-8 h-8 mx-auto text-[#8696a0]/40" />
+            <p>Start typing a username or ID above for instant suggestions.</p>
+          </div>
+        )}
+
+        {query.trim() && results.length === 0 && !loading && (
+          <div className="text-center text-[#8696a0] text-xs py-10">
+            No users found matching &quot;{query.trim()}&quot;
           </div>
         )}
 
         {results.map((u) => (
           <div
             key={u._id}
-            className="flex items-center justify-between p-3 rounded-xl bg-[#1f2c34]/60 border border-white/5 hover:bg-[#1f2c34] transition"
+            className="flex items-center justify-between p-3 rounded-xl bg-[#1f2c34]/60 border border-white/5 hover:bg-[#1f2c34] transition group"
           >
             <div className="flex items-center gap-3 min-w-0">
               <Avatar src={u.avatar} name={u.username} isOnline={u.isOnline} />

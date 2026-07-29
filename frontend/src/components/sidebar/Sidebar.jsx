@@ -10,6 +10,8 @@ import { MessageSquare, Users, UserPlus, Bell, LogOut, Sparkles } from 'lucide-r
 const Sidebar = ({
   activeChat,
   unreadCounts = {},
+  pendingRequestsCount = 0,
+  onRequestProcessed,
   onSelectChat,
   onCreateRoomClick,
   onJoinRoomClick,
@@ -105,7 +107,7 @@ const Sidebar = ({
 
         <button
           onClick={() => setActiveTab('requests')}
-          className={`flex-1 py-2 px-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl transition-all duration-200 ${
+          className={`flex-1 py-2 px-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl transition-all duration-200 relative ${
             activeTab === 'requests'
               ? 'bg-[#1f2c34] text-[#00a884] shadow-md border border-white/5'
               : 'text-[#8696a0] hover:text-white hover:bg-white/[0.03]'
@@ -113,6 +115,11 @@ const Sidebar = ({
         >
           <Bell className="w-3.5 h-3.5" />
           <span className="truncate">Requests</span>
+          {pendingRequestsCount > 0 && (
+            <span className="px-1.5 py-0.2 text-[10px] font-black bg-[#00a884] text-[#0b141a] rounded-full animate-pulse shadow-sm">
+              {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -147,6 +154,7 @@ const Sidebar = ({
             onRequestAccepted={() => {
               setActiveTab('chats');
             }}
+            onRequestProcessed={onRequestProcessed}
           />
         )}
       </div>
