@@ -12,8 +12,10 @@ export const SocketProvider = ({ children }) => {
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
   const [notifications, setNotifications] = useState([]);
 
+  const userId = user?._id;
+
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       if (socket) {
         socket.disconnect();
         setSocket(null);
@@ -22,8 +24,9 @@ export const SocketProvider = ({ children }) => {
     }
 
     const newSocket = io(SOCKET_URL, {
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       timeout: 10000,
+      transports: ['websocket', 'polling'],
     });
 
     newSocket.on('connect', () => {
@@ -31,14 +34,14 @@ export const SocketProvider = ({ children }) => {
       newSocket.emit('setup', user);
     });
 
-    newSocket.on('user_online', ({ userId }) => {
-      setOnlineUserIds((prev) => new Set([...prev, userId]));
+    newSocket.on('user_online', ({ userId: onlineId }) => {
+      setOnlineUserIds((prev) => new Set([...prev, onlineId]));
     });
 
-    newSocket.on('user_offline', ({ userId }) => {
+    newSocket.on('user_offline', ({ userId: offlineId }) => {
       setOnlineUserIds((prev) => {
         const next = new Set(prev);
-        next.delete(userId);
+        next.delete(offlineId);
         return next;
       });
     });
@@ -46,7 +49,7 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('follow_request_notification', (data) => {
       setNotifications((prev) => [
         ...prev,
-        { id: Date.now(), message: `New follow request from ${data.requesterName}` },
+        { id: Date.now(), message: `New follow request from ${data.requesterName || 'someone'}` },
       ]);
     });
 
@@ -55,7 +58,7 @@ export const SocketProvider = ({ children }) => {
     return () => {
       newSocket.disconnect();
     };
-  }, [user]);
+  }, [userId]);
 
   const removeNotification = (id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));

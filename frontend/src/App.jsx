@@ -259,12 +259,19 @@ function App() {
       }
     };
 
+    const handleErrorMessage = ({ message }) => {
+      if (message) {
+        showToast(message, 'error');
+      }
+    };
+
     socket.on('receive_private_message', handlePrivateMessage);
     socket.on('messages_read', handleMessagesRead);
     socket.on('receive_room_message', handleRoomMessage);
     socket.on('typing', handleTyping);
     socket.on('stop_typing', handleStopTyping);
     socket.on('member_kicked', handleMemberKicked);
+    socket.on('error_message', handleErrorMessage);
 
     return () => {
       socket.off('receive_private_message', handlePrivateMessage);
@@ -273,6 +280,7 @@ function App() {
       socket.off('typing', handleTyping);
       socket.off('stop_typing', handleStopTyping);
       socket.off('member_kicked', handleMemberKicked);
+      socket.off('error_message', handleErrorMessage);
     };
   }, [socket, activeChat]);
 

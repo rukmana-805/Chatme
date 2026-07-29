@@ -31,7 +31,8 @@ const socketHandler = (io) => {
 
       try {
         const sender = await User.findById(senderId);
-        if (!sender || !sender.friends.includes(receiverId)) {
+        const isFriend = sender && sender.friends.some((fId) => fId.toString() === receiverId.toString());
+        if (!sender || !isFriend) {
           return socket.emit('error_message', {
             message: 'Cannot send message. You must be connected friends.',
           });
