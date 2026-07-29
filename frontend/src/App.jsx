@@ -54,6 +54,37 @@ function App() {
     fetchInitialData();
   }, [user]);
 
+  // Mobile Chrome / Safari Visual Viewport height handler to prevent header hiding behind URL bar/3 dots
+  useEffect(() => {
+    const handleViewportResize = () => {
+      if (window.visualViewport) {
+        document.documentElement.style.setProperty(
+          '--visual-viewport-height',
+          `${window.visualViewport.height}px`
+        );
+      }
+      window.scrollTo(0, 0);
+    };
+
+    handleViewportResize();
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportResize);
+      window.visualViewport.addEventListener('scroll', handleViewportResize);
+    }
+
+    const preventScroll = () => window.scrollTo(0, 0);
+    window.addEventListener('scroll', preventScroll);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportResize);
+        window.visualViewport.removeEventListener('scroll', handleViewportResize);
+      }
+      window.removeEventListener('scroll', preventScroll);
+    };
+  }, []);
+
   // Clear unread count & emit mark_read when activeChat opens
   useEffect(() => {
     if (activeChat) {
@@ -328,7 +359,10 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen h-[100dvh] w-screen overflow-hidden bg-[#0b141a] text-white select-none relative pt-[env(safe-area-inset-top,0px)]">
+    <div
+      className="flex w-full overflow-hidden bg-[#0b141a] text-white select-none relative pt-[env(safe-area-inset-top,0px)]"
+      style={{ height: 'var(--visual-viewport-height, 100dvh)' }}
+    >
       {/* Responsive Sidebar Navigation */}
       <Sidebar
         activeChat={activeChat}
